@@ -21,5 +21,11 @@
     "noImplicitAny": false,
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false
-  }
+  },
+  "include": [
+    "src/**/*",         // Include all files in src
+    "src/**/*.spec.ts", // Explicitly ensure specs are seen (optional if above is present)
+    "test/**/*"         // If you have a separate /test folder
+  ],
+  "exclude": ["node_modules", "dist"]
 }
