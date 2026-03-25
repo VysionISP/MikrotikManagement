@@ -1,11 +1,5 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
   previewFeatures = ["driverAdapters"]
 }
 
@@ -13,22 +7,94 @@ datasource db {
   provider = "postgresql"
 }
 
+enum Role {
+  SUPERADMIN
+  USER
+}
+
+enum OrgRole {
+  ADMIN
+  MANAGER
+  VIEWER
+}
+
+enum DeviceStatus {
+  ONLINE
+  OFFLINE
+  WARNING
+}
+
 model User {
-  id       Int      @id @default(autoincrement())
-  username String   @unique
-  email    String   @unique
-  password String
-  createdAt DateTime @default(now())
-  devices  Device[]
+  id            Int                  @id @default(autoincrement())
+  username      String               @unique
+  email         String               @unique
+  password      String
+  role          Role                 @default(USER)
+  createdAt     DateTime             @default(now())
+  organizations OrganizationMember[]
+}
+
+model Organization {
+  id        Int                  @id @default(autoincrement())
+  name      String               @unique
+  slug      String               @unique
+  createdAt DateTime             @default(now())
+  members   OrganizationMember[]
+  sites     Site[]
+}
+
+model OrganizationMember {
+  id             Int          @id @default(autoincrement())
+  userId         Int
+  organizationId Int
+  role           OrgRole      @default(VIEWER)
+  createdAt      DateTime     @default(now())
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+}
+
+model Site {
+  id             Int          @id @default(autoincrement())
+  name           String
+  description    String?
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  devices        Device[]
+  createdAt      DateTime     @default(now())
+
+  @@unique([name, organizationId])
 }
 
 model Device {
-  id        Int      @id @default(autoincrement())
+  id        Int          @id @default(autoincrement())
   name      String
-  ipAddress String   @unique
-  status    String   @default("offline")
-  userId    Int
-  user      User     @relation(fields: [userId], references: [id])
-  createdAt DateTime @default(now())
+  ipAddress String
+  apiPort   Int          @default(8728)
+  username  String
+  password  String
+  model     String?
+  version   String?
+  status    DeviceStatus @default(OFFLINE)
+  siteId    Int
+  site      Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  metrics   DeviceMetric[]
+
+  @@unique([ipAddress, siteId])
 }
 
+model DeviceMetric {
+  id          Int      @id @default(autoincrement())
+  deviceId    Int
+  device      Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  cpuLoad     Float?
+  memoryUsed  Float?
+  totalMemory Float?
+  uptime      Int?
+  timestamp   DateTime @default(now())
+
+  @@index([deviceId, timestamp])
+}
